@@ -37,7 +37,6 @@ CFLAGS := -m64 \
           -Wall \
           -Wextra \
           -I$(KERNEL_SRC_DIR) \
-		  -Ikernel/include \
 		  -mcmodel=large \
 		  -mno-red-zone \
 		  -mno-mmx \

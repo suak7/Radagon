@@ -49,7 +49,7 @@ void kernel_main(void)
 {
     vga_init();
     serial_init();
-    serial_print("64-bit kernel running!\n");
+    serial_print("\n64-bit kernel running!\n");
     vga_print("\n\n\n\n\n\n64-bit kernel running!\n");
     
     while (1) 
