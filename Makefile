@@ -21,6 +21,8 @@ DISK_IMG := $(IMAGE_DIR)/boot.img
 # Bootloader sources
 MBR_SRC := $(BOOT_DIR)/mbr.asm
 STAGE2_SRC := $(BOOT_DIR)/stage2.asm
+KERNEL_ENTRY_SRC := $(KERNEL_DIR)/kernel_entry.asm  # ← ADDED THIS
+
 STAGE2_DEPS := $(BOOT_DIR)/print16_string.asm \
                $(BOOT_DIR)/print32_string.asm \
                $(BOOT_DIR)/gdt.asm \
@@ -28,6 +30,7 @@ STAGE2_DEPS := $(BOOT_DIR)/print16_string.asm \
 
 # Kernel sources
 KERNEL_C_SRC := $(shell find $(KERNEL_SRC_DIR) -name "*.c")
+KERNEL_ENTRY_OBJ := $(BUILD_DIR)/kernel_entry.o  # ← ADDED THIS
 KERNEL_C_OBJ := $(patsubst $(KERNEL_SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(KERNEL_C_SRC))
 KERNEL_ELF := $(BUILD_DIR)/kernel.elf
 
@@ -66,13 +69,18 @@ $(MBR_BIN): $(MBR_SRC) | $(BUILD_DIR)
 $(STAGE2_BIN): $(STAGE2_SRC) $(STAGE2_DEPS) | $(BUILD_DIR)
 	$(ASM) -f bin $< -o $@ -I $(BOOT_DIR)/
 
+# Assemble kernel entry (64-bit) ← ADDED THIS
+$(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY_SRC) | $(BUILD_DIR)
+	$(ASM) -f elf64 $< -o $@
+
 # Compile kernel C code
 $(BUILD_DIR)/%.o: $(KERNEL_SRC_DIR)/%.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Link kernel
-$(KERNEL_ELF): $(KERNEL_C_OBJ) | $(BUILD_DIR)
-	$(LD) -m elf_x86_64 $(LDFLAGS) -o $@ $(KERNEL_C_OBJ)
+# Link kernel ← MODIFIED THIS
+$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJ) | $(BUILD_DIR)
+	$(LD) -m elf_x86_64 $(LDFLAGS) -o $@ $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJ)
 
 # Convert kernel to flat binary
 $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILD_DIR)
@@ -85,10 +93,6 @@ $(DISK_IMG): $(MBR_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(IMAGE_DIR)
 # Run in QEMU with CPU feature display
 run: $(DISK_IMG)
 	$(QEMU) -m 512M -drive format=raw,file=$(DISK_IMG),if=ide -serial stdio -no-reboot -cpu max
-
-# Debug version with more verbose output
-debug: $(DISK_IMG)
-	$(QEMU) -m 512M -drive format=raw,file=$(DISK_IMG),if=ide -serial stdio -no-reboot -cpu max -d int,cpu_reset
 
 clean:
 	@rm -rf $(BUILD_DIR) $(IMAGE_DIR)
