@@ -13,7 +13,6 @@ start_stage2:
     call print16_string
     call print16_newline
 
-    ; Check for long mode support
     call check_long_mode
     cmp ax, 0
     je .no_long_mode
@@ -40,7 +39,7 @@ start_stage2:
     mov ah, 0x02               
     mov al, KERNEL_SECTORS     
     mov ch, 0                  
-    mov cl, 10                 
+    mov cl, 18                
     mov dh, 0                  
     mov dl, [boot_drive]
     int 0x13
@@ -86,11 +85,9 @@ start_stage2:
     hlt
     jmp $
 
-; Check if CPU supports long mode
 check_long_mode:
     pusha
-    
-    ; Check if CPUID is supported
+
     pushfd
     pop eax
     mov ecx, eax
@@ -101,14 +98,12 @@ check_long_mode:
     pop eax
     xor eax, ecx
     jz .no_cpuid
-    
-    ; Check for extended CPUID
+
     mov eax, 0x80000000
     cpuid
     cmp eax, 0x80000001
     jb .no_long_mode
-    
-    ; Check for long mode
+
     mov eax, 0x80000001
     cpuid
     test edx, 1 << 29
@@ -143,63 +138,52 @@ begin_pm:
     call print32_string
     call print32_newline
 
-    ; Set up page tables for identity mapping (first 2MB)
     call setup_page_tables
-    
-    ; Enable PAE (Physical Address Extension)
+
     mov eax, cr4
     or eax, 1 << 5
     mov cr4, eax
-    
-    ; Load PML4 address into CR3
+
     mov eax, pml4_table
     mov cr3, eax
-    
-    ; Enable long mode in EFER MSR
+
     mov ecx, 0xC0000080
     rdmsr
     or eax, 1 << 8
     wrmsr
-    
-    ; Enable paging
+
     mov eax, cr0
     or eax, 1 << 31
     mov cr0, eax
-    
-    ; Load 64-bit GDT
+
     lgdt [gdt64_descriptor]
     
     mov ebx, jumping_long_mode_str
     call print32_string
     call print32_newline
-    
-    ; Jump to 64-bit code
+
     jmp CODE64_SEG:long_mode_start
 
 setup_page_tables:
-    ; Clear the page table area - FIXED: clear 3 tables only
     mov edi, pml4_table
-    mov ecx, 4096 * 3 / 4  ; Clear 3 tables (PML4, PDPT, PD)
+    mov ecx, 4096 * 3 / 4  
     xor eax, eax
     cld
     rep stosd
-    
-    ; Set up PML4 entry (points to PDPT)
+
     mov edi, pml4_table
     mov eax, pdp_table
-    or eax, 0b11  ; Present + Writable
+    or eax, 0b11  
     mov [edi], eax
-    
-    ; Set up PDPT entry (points to PD)
+
     mov edi, pdp_table
     mov eax, pd_table
     or eax, 0b11
     mov [edi], eax
-    
-    ; Set up PD entry (2MB page)
+
     mov edi, pd_table
     mov eax, 0x0
-    or eax, 0b10000011  ; Present + Writable + Page Size (2MB pages)
+    or eax, 0b10000011  
     mov [edi], eax
     
     ret
@@ -207,19 +191,16 @@ setup_page_tables:
 [bits 64]
 
 long_mode_start:
-    ; Set up segment registers for 64-bit mode
     mov ax, DATA64_SEG
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
     mov ss, ax
-    
-    ; Set up stack
+
     mov rbp, 0x90000
     mov rsp, rbp
 
-    ; Jump to kernel
     mov rax, KERNEL_OFFSET
     jmp rax
 
@@ -242,7 +223,6 @@ no_long_mode_str: db 'Error: CPU does not support 64-bit long mode', 0
 boot_drive: db 0
 cursor_pos: dd 0       
 
-; Align page tables to 4KB boundary
 align 4096
 pml4_table:
     times 4096 db 0
