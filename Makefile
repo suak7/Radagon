@@ -13,7 +13,7 @@ KERNEL_INC_DIR := $(KERNEL_DIR)/include
 
 MBR_SRC := $(BOOT_DIR)/mbr.asm
 STAGE2_SRC := $(BOOT_DIR)/stage2.asm
-KERNEL_ENTRY_SRC := $(KERNEL_DIR)/kernel_entry.asm
+KERNEL_ENTRY_SRC := $(KERNEL_DIR)/src/kernel_entry.asm
 
 MBR_BIN := $(BUILD_DIR)/mbr.bin
 STAGE2_BIN := $(BUILD_DIR)/stage2.bin
@@ -23,7 +23,7 @@ DISK_IMG := $(IMAGE_DIR)/boot.img
 SATA_IMG := $(IMAGE_DIR)/sata.img
 
 KERNEL_C_SRC := \
-	$(KERNEL_DIR)/kernel.c \
+	$(KERNEL_DIR)/src/kernel.c \
 	$(shell find $(KERNEL_SRC_DIR) -name "*.c")
 
 KERNEL_C_OBJ := $(KERNEL_C_SRC:%.c=$(BUILD_DIR)/%.o)
